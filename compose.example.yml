@@ -1,0 +1,14 @@
+name: searxng-access
+
+services:
+  core:
+    image: ghcr.io/dz-mykolas/searxng-access:${SEARXNG_ACCESS_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./core-config:/etc/searxng
+      - core-data:/var/cache/searxng
+
+volumes:
+  core-data:

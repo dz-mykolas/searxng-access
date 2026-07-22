@@ -1,0 +1,9 @@
+*
+!Containerfile
+!README.md
+!pyproject.toml
+!uv.lock
+!src/
+!src/**
+!container/
+!container/**

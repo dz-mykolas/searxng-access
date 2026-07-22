@@ -1,0 +1,41 @@
+# Fresh installations use this template. The upstream entrypoint replaces the
+# placeholder secret before writing /etc/searxng/settings.yml.
+use_default_settings: true
+
+server:
+  secret_key: "ultrasecretkey"
+  image_proxy: true
+
+search:
+  formats:
+    - html
+    - json
+
+# SearXNG replaces, rather than merges, its default plugin mapping when this
+# section is present. Keep the built-in list synchronized with the pinned base
+# image and add searxng-access to it.
+plugins:
+  searx.plugins.calculator.SXNGPlugin:
+    active: true
+  searx.plugins.infinite_scroll.SXNGPlugin:
+    active: false
+  searx.plugins.hash_plugin.SXNGPlugin:
+    active: true
+  searx.plugins.self_info.SXNGPlugin:
+    active: true
+  searx.plugins.unit_converter.SXNGPlugin:
+    active: true
+  searx.plugins.ahmia_filter.SXNGPlugin:
+    active: true
+  searx.plugins.hostnames.SXNGPlugin:
+    active: true
+  searx.plugins.time_zone.SXNGPlugin:
+    active: true
+  searx.plugins.oa_doi_rewrite.SXNGPlugin:
+    active: false
+  searx.plugins.tor_check.SXNGPlugin:
+    active: false
+  searx.plugins.tracker_url_remover.SXNGPlugin:
+    active: true
+  searxng_access.plugin.SXNGPlugin:
+    active: true

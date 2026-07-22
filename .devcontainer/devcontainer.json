@@ -1,0 +1,14 @@
+{
+  "name": "searxng-access",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "init": true,
+  "forwardPorts": [8888],
+  "portsAttributes": {
+    "8888": {
+      "label": "SearXNG"
+    }
+  },
+  "postCreateCommand": ["make", "setup"]
+}

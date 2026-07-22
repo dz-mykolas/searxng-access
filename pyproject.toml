@@ -1,0 +1,31 @@
+[project]
+name = "searxng-access"
+version = "0.1.0"
+description = "Token-based access control for SearXNG"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+searxng-access = "searxng_access.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.31,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.22",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
+[tool.ruff]
+extend-exclude = [".searxng"]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

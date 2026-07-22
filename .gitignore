@@ -1,0 +1,11 @@
+.searxng/
+.venv/
+dev/*.db
+dev/*.db-shm
+dev/*.db-wal
+.coverage
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+dist/

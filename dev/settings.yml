@@ -1,0 +1,17 @@
+use_default_settings:
+  engines:
+    remove:
+      - ahmia
+      - torch
+
+server:
+  secret_key: "searxng-access-local-development-only"
+
+search:
+  formats:
+    - html
+    - json
+
+plugins:
+  searxng_access.plugin.SXNGPlugin:
+    active: true
