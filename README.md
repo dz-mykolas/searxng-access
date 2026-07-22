@@ -1,7 +1,6 @@
 # 🔐 SearXNG Access
 
-[![Latest release](https://img.shields.io/github/v/release/dz-mykolas/searxng-access?label=release)](https://github.com/dz-mykolas/searxng-access/releases/latest)
-[![Container](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml/badge.svg)](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml)
+[![Container](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml/badge.svg?branch=main)](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml?query=branch%3Amain)
 
 Private access control for [SearXNG](https://github.com/searxng/searxng), built for
 both people and machines.
@@ -14,15 +13,15 @@ both people and machines.
 mkdir searxng-access && cd searxng-access
 
 curl -fsSL \
-  https://raw.githubusercontent.com/dz-mykolas/searxng-access/main/compose.example.yml \
-  -o compose.yml
+  https://raw.githubusercontent.com/dz-mykolas/searxng-access/main/compose.example.yaml \
+  -o compose.yaml
 
 mkdir core-config
 docker compose up -d
 ```
 
 The image already contains SearXNG and enables the access plugin automatically on a
-fresh installation. The example tracks `latest`; pin a release for predictable
+fresh installation. The example tracks `latest`; pin a version for predictable
 production upgrades by adding `SEARXNG_ACCESS_VERSION=0.1.0` to a local `.env` file.
 
 > [!IMPORTANT]
@@ -130,7 +129,7 @@ docker compose exec core searxng-access usage
 - Usage counters never contain search queries.
 - SQLite contains tokens, sessions, quota windows, and aggregate usage.
 
-## 📦 Images and releases
+## 📦 Container images
 
 Version tags publish tested `linux/amd64` and `linux/arm64` images to:
 
@@ -139,7 +138,7 @@ ghcr.io/dz-mykolas/searxng-access:0.1.0
 ghcr.io/dz-mykolas/searxng-access:latest
 ```
 
-The release workflow runs unit and SearXNG integration tests, then publishes an SBOM
+The publish workflow runs unit and SearXNG integration tests, then publishes an SBOM
 and provenance attestation. The first GHCR package publication must be made public once
 by a maintainer so VPS users can pull it anonymously.
 
