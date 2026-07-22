@@ -27,6 +27,24 @@ def test_create_and_authenticate_without_storing_raw_token(store: TokenStore) ->
     assert b"raw-secret-token" not in store.database.read_bytes()
 
 
+def test_operations_close_database_connections(store: TokenStore, monkeypatch) -> None:
+    original_connect = store._connect
+    connections = []
+
+    def tracked_connect():
+        connection = original_connect()
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(store, "_connect", tracked_connect)
+
+    store.list_tokens()
+
+    assert len(connections) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        connections[0].execute("SELECT 1")
+
+
 def test_invalid_expired_and_revoked_tokens(store: TokenStore) -> None:
     expired = store.create_token(
         label="expired",

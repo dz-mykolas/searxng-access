@@ -8,6 +8,7 @@ import json
 import secrets
 import sqlite3
 import time
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,7 +63,7 @@ class TokenStore:
         return connection
 
     def _initialize(self) -> None:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
@@ -150,7 +151,7 @@ class TokenStore:
         created_at = int(time.time()) if now is None else now
         encoded_capabilities = json.dumps(sorted(capabilities), separators=(",", ":"))
 
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute(
                 """
                 INSERT INTO tokens (
@@ -174,7 +175,7 @@ class TokenStore:
     def ensure_development_token(self, token: str) -> CreatedToken | None:
         """Create the known local token only when the database has never had tokens."""
 
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             count = connection.execute("SELECT COUNT(*) FROM tokens").fetchone()[0]
         if count:
             return None
@@ -183,7 +184,7 @@ class TokenStore:
     def authenticate(self, raw_token: str, *, now: int | None = None) -> AuthenticationResult:
         checked_at = int(time.time()) if now is None else now
         token_hash = self._hash_token(raw_token)
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             row = connection.execute(
                 "SELECT * FROM tokens WHERE token_hash = ?",
                 (token_hash,),
@@ -219,7 +220,7 @@ class TokenStore:
         created_at = int(time.time()) if now is None else now
         expires_at = created_at + lifetime_seconds
         raw_session = f"ssn_{secrets.token_urlsafe(32)}"
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute(
                 "DELETE FROM sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL",
                 (created_at,),
@@ -252,7 +253,7 @@ class TokenStore:
 
         checked_at = int(time.time()) if now is None else now
         session_hash = self._hash_token(raw_session)
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             session = connection.execute(
                 "SELECT * FROM sessions WHERE session_hash = ?",
                 (session_hash,),
@@ -283,7 +284,7 @@ class TokenStore:
 
     def revoke_session(self, raw_session: str, *, now: int | None = None) -> bool:
         revoked_at = int(time.time()) if now is None else now
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             cursor = connection.execute(
                 """
                 UPDATE sessions SET revoked_at = ?
@@ -295,7 +296,7 @@ class TokenStore:
 
     def revoke_token(self, token_id: str, *, now: int | None = None) -> bool:
         revoked_at = int(time.time()) if now is None else now
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             cursor = connection.execute(
                 "UPDATE tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
                 (revoked_at, token_id),
@@ -308,7 +309,7 @@ class TokenStore:
 
         checked_at = int(time.time()) if now is None else now
         window_start = checked_at - (checked_at % token.window_seconds)
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             connection.execute(
                 "DELETE FROM quota_windows WHERE token_id = ? AND window_start < ?",
@@ -343,7 +344,7 @@ class TokenStore:
         now: int | None = None,
     ) -> None:
         used_at = int(time.time()) if now is None else now
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute(
                 """
                 INSERT INTO usage (token_id, route, outcome, request_count, last_used_at)
@@ -356,12 +357,12 @@ class TokenStore:
             )
 
     def list_tokens(self) -> list[TokenRecord]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             rows = connection.execute("SELECT * FROM tokens ORDER BY created_at, id").fetchall()
         return [self._row_to_token(row) for row in rows]
 
     def usage(self) -> list[dict[str, str | int]]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT token_id, route, outcome, request_count, last_used_at

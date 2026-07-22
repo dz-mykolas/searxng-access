@@ -1,5 +1,6 @@
 *
 !Containerfile
+!LICENSE
 !README.md
 !pyproject.toml
 !uv.lock
