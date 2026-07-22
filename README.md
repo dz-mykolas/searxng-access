@@ -1,7 +1,7 @@
 # 🔐 SearXNG Access
 
-Private access control for [SearXNG](https://github.com/searxng/searxng), built for
-both people and machines.
+Token-based access control plugin for [SearXNG](https://github.com/searxng/searxng)
+with bearer tokens, capabilities, quotas, browser sessions, and revocation.
 
 ## 🚀 Quick start
 

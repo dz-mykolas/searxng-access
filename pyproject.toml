@@ -1,11 +1,24 @@
 [project]
 name = "searxng-access"
 version = "0.1.0"
-description = "Token-based access control for SearXNG"
+description = "Token-based access control plugin for SearXNG"
+readme = "README.md"
+keywords = [
+    "searxng",
+    "authentication",
+    "authorization",
+    "access-control",
+    "bearer-token",
+    "rate-limiting",
+]
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = []
+
+[project.urls]
+Source = "https://github.com/dz-mykolas/searxng-access"
+Issues = "https://github.com/dz-mykolas/searxng-access/issues"
 
 [project.scripts]
 searxng-access = "searxng_access.cli:main"
