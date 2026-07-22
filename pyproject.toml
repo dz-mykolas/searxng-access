@@ -1,6 +1,6 @@
 [project]
 name = "searxng-access"
-version = "0.1.1"
+version = "0.1.2"
 description = "Token-based access control plugin for SearXNG"
 readme = "README.md"
 keywords = [

@@ -1,0 +1,3 @@
+{$SEARXNG_HOST} {
+	reverse_proxy core:8080
+}

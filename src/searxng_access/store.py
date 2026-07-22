@@ -46,6 +46,12 @@ class CreatedSession:
     expires_at: int
 
 
+@dataclass(frozen=True)
+class QuotaDecision:
+    allowed: bool
+    retry_after: int | None = None
+
+
 class TokenStore:
     """Persist only token hashes and aggregate, query-free usage data."""
 
@@ -304,8 +310,16 @@ class TokenStore:
         return cursor.rowcount == 1
 
     def consume_quota(self, token: TokenRecord, *, now: int | None = None) -> bool:
+        return self.consume_quota_decision(token, now=now).allowed
+
+    def consume_quota_decision(
+        self,
+        token: TokenRecord,
+        *,
+        now: int | None = None,
+    ) -> QuotaDecision:
         if token.request_limit is None or token.window_seconds is None:
-            return True
+            return QuotaDecision(allowed=True)
 
         checked_at = int(time.time()) if now is None else now
         window_start = checked_at - (checked_at % token.window_seconds)
@@ -323,7 +337,10 @@ class TokenStore:
                 (token.id, window_start),
             ).fetchone()
             if row is not None and row["request_count"] >= token.request_limit:
-                return False
+                return QuotaDecision(
+                    allowed=False,
+                    retry_after=window_start + token.window_seconds - checked_at,
+                )
             connection.execute(
                 """
                 INSERT INTO quota_windows (token_id, window_start, request_count)
@@ -333,7 +350,7 @@ class TokenStore:
                 """,
                 (token.id, window_start),
             )
-        return True
+        return QuotaDecision(allowed=True)
 
     def record_usage(
         self,

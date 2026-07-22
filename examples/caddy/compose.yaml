@@ -1,0 +1,38 @@
+name: searxng-access
+
+services:
+  core:
+    image: ghcr.io/dz-mykolas/searxng-access:${SEARXNG_ACCESS_VERSION:-latest}
+    restart: unless-stopped
+    expose:
+      - "8080"
+    volumes:
+      - ./core-config:/etc/searxng
+      - core-data:/var/cache/searxng
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    depends_on:
+      - core
+    environment:
+      SEARXNG_HOST: "${SEARXNG_HOST:?Set SEARXNG_HOST in .env}"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+configs:
+  caddyfile:
+    file: ./Caddyfile
+
+volumes:
+  core-data:
+  caddy-data:
+  caddy-config:

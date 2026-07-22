@@ -163,13 +163,17 @@ class SXNGPlugin(Plugin):
                     "The token lacks the required capability",
                 )
 
-            if not self.store.consume_quota(token):
+            quota = self.store.consume_quota_decision(token)
+            if not quota.allowed:
                 self.store.record_usage(token.id, route=route, outcome="rate_limited")
-                return self._error(
+                response = self._error(
                     429,
                     "rate_limit_exceeded",
                     "The token request limit was reached",
                 )
+                assert quota.retry_after is not None
+                response.headers["Retry-After"] = str(quota.retry_after)
+                return response
 
             g.searxng_access_token = token
             g.searxng_access_source = source

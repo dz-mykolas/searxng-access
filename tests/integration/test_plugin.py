@@ -282,8 +282,13 @@ class PluginIntegrationTest(unittest.TestCase):
         headers = api_key("integration-limited-token")
         self.assertEqual(self.get("/", headers=headers).status_code, 200)
         response = self.get("/", headers=headers)
+        if response.status_code == 200:
+            # A fixed quota window can roll over between the first two requests.
+            response = self.get("/", headers=headers)
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json["error"], "rate_limit_exceeded")
+        self.assertGreaterEqual(int(response.headers["Retry-After"]), 1)
+        self.assertLessEqual(int(response.headers["Retry-After"]), 3600)
 
 
 if __name__ == "__main__":

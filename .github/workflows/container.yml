@@ -65,10 +65,76 @@ jobs:
         with:
           context: .
           file: ./Containerfile
+          tags: searxng-access:ci
           platforms: linux/amd64
+          load: true
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Smoke test container
+        env:
+          SMOKE_TOKEN: container-smoke-token
+        run: |
+          docker run --detach \
+            --name searxng-access-smoke \
+            --publish 127.0.0.1:18080:8080 \
+            --env SEARXNG_ACCESS_DEV_TOKEN="$SMOKE_TOKEN" \
+            --env SEARXNG_ACCESS_SECURE_COOKIE=false \
+            searxng-access:ci
+          trap 'docker rm --force searxng-access-smoke >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..60}; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:18080/healthz || true)
+            if [ "$status" = 200 ]; then
+              break
+            fi
+            if [ "$attempt" = 60 ]; then
+              docker logs searxng-access-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+
+          missing_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:18080/config)
+          api_key_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header "X-API-Key: $SMOKE_TOKEN" \
+            http://127.0.0.1:18080/config)
+          bearer_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer $SMOKE_TOKEN" \
+            http://127.0.0.1:18080/config)
+          test "$missing_status" = 401
+          test "$api_key_status" = 200
+          test "$bearer_status" = 200
+
+          limited_token=$(docker exec searxng-access-smoke \
+            searxng-access token create \
+              --label smoke-test \
+              --capability search \
+              --limit 1 \
+              --window 60 \
+            | awk '$1 == "Token:" { print $2 }')
+          test -n "$limited_token"
+          first_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header "X-API-Key: $limited_token" \
+            http://127.0.0.1:18080/)
+          quota_headers=$(mktemp)
+          second_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --dump-header "$quota_headers" \
+            --header "X-API-Key: $limited_token" \
+            http://127.0.0.1:18080/)
+          if [ "$second_status" = 200 ]; then
+            second_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --dump-header "$quota_headers" \
+              --header "X-API-Key: $limited_token" \
+              http://127.0.0.1:18080/)
+          fi
+          test "$first_status" = 200
+          test "$second_status" = 429
+          tr -d '\r' < "$quota_headers" | grep --extended-regexp --quiet \
+            '^Retry-After: [1-9][0-9]*$'
 
   publish:
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}

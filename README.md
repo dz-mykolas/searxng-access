@@ -20,7 +20,7 @@ docker compose up -d
 
 The image already contains SearXNG and enables the access plugin automatically on a
 fresh installation. The example uses `latest` by default. For predictable production
-deployments, create a local `.env` file with `SEARXNG_ACCESS_VERSION=0.1.1`.
+deployments, create a local `.env` file with `SEARXNG_ACCESS_VERSION=0.1.2`.
 
 > [!IMPORTANT]
 > Browser login requires HTTPS in production. For temporary local HTTP testing, set
@@ -53,10 +53,39 @@ curl \
 > [!TIP]
 > `X-API-Key: sxng_REPLACE_ME` is also accepted for clients such as LibreChat.
 
+Limited tokens return `429 Too Many Requests` with a standard `Retry-After` header
+when their current quota window is exhausted.
+
 > [!NOTE]
 > Migrating an existing SearXNG installation? The image will not rewrite your mounted
 > `settings.yml`. Add `searxng_access.plugin.SXNGPlugin: {active: true}` to its existing
 > `plugins:` mapping once, without removing your other plugin entries.
+
+## 🌐 VPS with automatic HTTPS
+
+For a public VPS, use the Caddy example instead of the basic Compose file. Point your
+domain to the server and allow inbound ports `80` and `443`, then run:
+
+```bash
+mkdir searxng-access && cd searxng-access
+
+curl -fsSL \
+  https://raw.githubusercontent.com/dz-mykolas/searxng-access/main/examples/caddy/compose.yaml \
+  -o compose.yaml
+curl -fsSL \
+  https://raw.githubusercontent.com/dz-mykolas/searxng-access/main/examples/caddy/Caddyfile \
+  -o Caddyfile
+
+printf '%s\n' \
+  'SEARXNG_HOST=search.example.com' \
+  'SEARXNG_ACCESS_VERSION=0.1.2' > .env
+
+mkdir core-config
+docker compose up -d
+```
+
+Caddy obtains and renews the HTTPS certificate automatically. Only Caddy exposes host
+ports; SearXNG remains reachable solely inside the Compose network.
 
 ## 🛠️ Development
 
@@ -137,7 +166,7 @@ docker compose exec core searxng-access usage
 Version tags publish tested `linux/amd64` and `linux/arm64` images to:
 
 ```text
-ghcr.io/dz-mykolas/searxng-access:0.1.1
+ghcr.io/dz-mykolas/searxng-access:0.1.2
 ghcr.io/dz-mykolas/searxng-access:latest
 ```
 

@@ -34,3 +34,17 @@ class ContainerConfigurationTest(TestCase):
         )
         self.assertTrue(image["plugins"]["searxng_access.plugin.SXNGPlugin"]["active"])
         self.assertIn("json", image["search"]["formats"])
+
+    def test_caddy_example_keeps_the_application_port_internal(self) -> None:
+        example = ROOT / "examples" / "caddy"
+        compose = yaml.safe_load((example / "compose.yaml").read_text())
+        caddyfile = (example / "Caddyfile").read_text()
+
+        self.assertNotIn("ports", compose["services"]["core"])
+        self.assertIn("8080", compose["services"]["core"]["expose"])
+        self.assertEqual(
+            compose["services"]["caddy"]["image"],
+            "caddy:2.11.4-alpine",
+        )
+        self.assertIn("443:443", compose["services"]["caddy"]["ports"])
+        self.assertIn("reverse_proxy core:8080", caddyfile)

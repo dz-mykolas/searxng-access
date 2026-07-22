@@ -94,6 +94,11 @@ def test_fixed_window_quota(store: TokenStore) -> None:
     assert store.consume_quota(token, now=100)
     assert store.consume_quota(token, now=101)
     assert not store.consume_quota(token, now=102)
+
+    rejected = store.consume_quota_decision(token, now=102)
+    assert not rejected.allowed
+    assert rejected.retry_after == 18
+
     assert store.consume_quota(token, now=120)
 
 
