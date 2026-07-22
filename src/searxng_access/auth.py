@@ -1,4 +1,4 @@
-"""HTTP bearer-token parsing."""
+"""HTTP access-token parsing."""
 
 
 def parse_bearer_token(header: str | None) -> str | None:
@@ -12,6 +12,18 @@ def parse_bearer_token(header: str | None) -> str | None:
         return None
 
     token = parts[1]
+    if not token or any(character.isspace() for character in token):
+        return None
+    return token
+
+
+def parse_api_key(header: str | None) -> str | None:
+    """Return a token from an X-API-Key header, if it is well formed."""
+
+    if header is None:
+        return None
+
+    token = header.strip()
     if not token or any(character.isspace() for character in token):
         return None
     return token

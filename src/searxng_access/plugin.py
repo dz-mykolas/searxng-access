@@ -1,4 +1,4 @@
-"""SearXNG plugin that installs request-wide bearer-token enforcement."""
+"""SearXNG plugin that installs request-wide token enforcement."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from urllib.parse import urlsplit, urlunsplit
 from flask import Response, g, redirect, request, url_for
 from searx.plugins import Plugin, PluginInfo
 
-from .auth import parse_bearer_token
+from .auth import parse_api_key, parse_bearer_token
 from .policy import RouteDecision, required_capability
 from .store import TokenRecord, TokenStore
 
@@ -34,7 +34,7 @@ class SXNGPlugin(Plugin):
         self.info = PluginInfo(
             id=self.id,
             name="SearXNG Access",
-            description="Bearer-token access control",
+            description="API-token access control",
             preference_section=None,
         )
         self.store: TokenStore | None = None
@@ -102,12 +102,26 @@ class SXNGPlugin(Plugin):
         assert self.store is not None
         try:
             authorization_header = request.headers.get("Authorization")
+            api_key_header = request.headers.get("X-API-Key")
             raw_session = request.cookies.get(self.session_cookie)
-            source = "bearer"
+            if authorization_header is not None and api_key_header is not None:
+                return self._error(
+                    400,
+                    "multiple_credentials",
+                    "Use only one authentication header",
+                )
+
             if authorization_header is not None:
+                source = "bearer"
                 raw_token = parse_bearer_token(authorization_header)
                 if raw_token is None:
-                    return self._unauthorized(explicit_bearer=True)
+                    return self._unauthorized(explicit_credentials=True)
+                authentication = self.store.authenticate(raw_token)
+            elif api_key_header is not None:
+                source = "api_key"
+                raw_token = parse_api_key(api_key_header)
+                if raw_token is None:
+                    return self._unauthorized(explicit_credentials=True)
                 authentication = self.store.authenticate(raw_token)
             elif raw_session:
                 source = "session"
@@ -116,12 +130,15 @@ class SXNGPlugin(Plugin):
                     idle_seconds=self.session_idle,
                 )
             else:
-                return self._unauthorized(explicit_bearer=False)
+                return self._unauthorized(explicit_credentials=False)
 
             if authentication.token is None:
+                explicit_credentials = (
+                    authorization_header is not None or api_key_header is not None
+                )
                 return self._unauthorized(
-                    explicit_bearer=authorization_header is not None,
-                    clear_session=authorization_header is None and bool(raw_session),
+                    explicit_credentials=explicit_credentials,
+                    clear_session=not explicit_credentials and bool(raw_session),
                 )
 
             token = authentication.token
@@ -317,17 +334,17 @@ class SXNGPlugin(Plugin):
     def _unauthorized(
         self,
         *,
-        explicit_bearer: bool,
+        explicit_credentials: bool,
         clear_session: bool = False,
     ) -> Response:
-        if not explicit_bearer and self._wants_html():
+        if not explicit_credentials and self._wants_html():
             target = request.full_path.removesuffix("?")
             response = redirect(
                 url_for("searxng_access_login", next=self._safe_next(target)),
                 code=303,
             )
         else:
-            response = self._error(401, "invalid_token", "A valid bearer token is required")
+            response = self._error(401, "invalid_token", "A valid access token is required")
         if clear_session:
             response.delete_cookie(
                 self.session_cookie,

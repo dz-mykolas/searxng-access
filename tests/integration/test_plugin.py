@@ -46,6 +46,10 @@ def authorization(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def api_key(token: str) -> dict[str, str]:
+    return {"X-API-Key": token}
+
+
 class PluginIntegrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -97,6 +101,9 @@ class PluginIntegrationTest(unittest.TestCase):
             {},
             authorization("invalid"),
             authorization("integration-revoked-token"),
+            api_key("invalid"),
+            api_key("integration-revoked-token"),
+            {**api_key("invalid"), "Accept": "text/html"},
         ):
             with self.subTest(headers=headers):
                 response = self.get("/", headers=headers)
@@ -105,6 +112,25 @@ class PluginIntegrationTest(unittest.TestCase):
 
         search_response = self.get("/search?q=test")
         self.assertEqual(search_response.status_code, 401)
+
+    def test_x_api_key_authenticates_and_uses_capabilities(self) -> None:
+        headers = api_key("integration-search-token")
+        self.assertEqual(self.get("/", headers=headers).status_code, 200)
+
+        response = self.get("/config", headers=headers)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json["error"], "insufficient_scope")
+
+    def test_multiple_authentication_headers_are_rejected(self) -> None:
+        response = self.get(
+            "/",
+            headers={
+                **authorization("integration-full-token"),
+                **api_key("integration-full-token"),
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json["error"], "multiple_credentials")
 
     def test_browser_login_session_and_logout(self) -> None:
         redirect_to_login = self.get("/", headers={"Accept": "text/html"})
@@ -253,7 +279,7 @@ class PluginIntegrationTest(unittest.TestCase):
         self.assertEqual(response.json["error"], "route_denied")
 
     def test_quota_returns_too_many_requests(self) -> None:
-        headers = authorization("integration-limited-token")
+        headers = api_key("integration-limited-token")
         self.assertEqual(self.get("/", headers=headers).status_code, 200)
         response = self.get("/", headers=headers)
         self.assertEqual(response.status_code, 429)

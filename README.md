@@ -1,7 +1,7 @@
 # 🔐 SearXNG Access
 
 Token-based access control plugin for [SearXNG](https://github.com/searxng/searxng)
-with bearer tokens, capabilities, quotas, browser sessions, and revocation.
+with API tokens, capabilities, quotas, browser sessions, and revocation.
 
 ## 🚀 Quick start
 
@@ -19,8 +19,8 @@ docker compose up -d
 ```
 
 The image already contains SearXNG and enables the access plugin automatically on a
-fresh installation. The example tracks `latest`; pin a version for predictable
-production upgrades by adding `SEARXNG_ACCESS_VERSION=0.1.0` to a local `.env` file.
+fresh installation. The example uses `latest` by default. For predictable production
+deployments, create a local `.env` file with `SEARXNG_ACCESS_VERSION=0.1.1`.
 
 > [!IMPORTANT]
 > Browser login requires HTTPS in production. For temporary local HTTP testing, set
@@ -49,6 +49,9 @@ curl \
   -H 'Authorization: Bearer sxng_REPLACE_ME' \
   'https://search.example.com/search?q=searxng&format=json'
 ```
+
+> [!TIP]
+> `X-API-Key: sxng_REPLACE_ME` is also accepted for clients such as LibreChat.
 
 > [!NOTE]
 > Migrating an existing SearXNG installation? The image will not rewrite your mounted
@@ -126,13 +129,15 @@ docker compose exec core searxng-access usage
 - Revoking a token also invalidates browser sessions created from it.
 - Usage counters never contain search queries.
 - SQLite contains tokens, sessions, quota windows, and aggregate usage.
+- Keep `Authorization` and `X-API-Key` values out of proxy and debug logs.
+- After deployment, confirm API requests with missing and invalid tokens both return `401`.
 
 ## 📦 Container images
 
 Version tags publish tested `linux/amd64` and `linux/arm64` images to:
 
 ```text
-ghcr.io/dz-mykolas/searxng-access:0.1.0
+ghcr.io/dz-mykolas/searxng-access:0.1.1
 ghcr.io/dz-mykolas/searxng-access:latest
 ```
 
