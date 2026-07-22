@@ -1,7 +1,5 @@
 # 🔐 SearXNG Access
 
-[![Container](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml/badge.svg?branch=main)](https://github.com/dz-mykolas/searxng-access/actions/workflows/container.yml?query=branch%3Amain)
-
 Private access control for [SearXNG](https://github.com/searxng/searxng), built for
 both people and machines.
 
