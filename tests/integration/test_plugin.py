@@ -13,6 +13,7 @@ from searxng_access.policy import (
     PUBLIC_ENDPOINTS,
     SEARCH_ENDPOINTS,
 )
+from searxng_access.plugin import DEFAULT_SESSION_LIFETIME
 from searxng_access.store import TokenStore
 
 
@@ -154,8 +155,15 @@ class PluginIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(login.status_code, 303)
         self.assertEqual(login.location, "/")
-        self.assertIn("HttpOnly", login.headers["Set-Cookie"])
-        self.assertIn("SameSite=Lax", login.headers["Set-Cookie"])
+        session_cookie = next(
+            header
+            for header in login.headers.getlist("Set-Cookie")
+            if "searxng_access_session=" in header and "Max-Age=0" not in header
+        )
+        self.assertIn(f"Max-Age={DEFAULT_SESSION_LIFETIME}", session_cookie)
+        self.assertIn("Expires=", session_cookie)
+        self.assertIn("HttpOnly", session_cookie)
+        self.assertIn("SameSite=Lax", session_cookie)
 
         self.assertEqual(self.get("/").status_code, 200)
         self.assertEqual(self.get("/access").status_code, 200)
@@ -233,6 +241,36 @@ class PluginIntegrationTest(unittest.TestCase):
             data={"token": "integration-full-token", "next": "/"},
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_login_csrf_lasts_for_the_browser_session(self) -> None:
+        first_page = self.get("/access/login")
+        first_match = re.search(r'name="csrf_token" value="([^"]+)"', first_page.text)
+        self.assertIsNotNone(first_match)
+        assert first_match is not None
+
+        csrf_cookie = next(
+            header
+            for header in first_page.headers.getlist("Set-Cookie")
+            if "searxng_access_login_csrf=" in header
+        )
+        self.assertNotIn("Max-Age", csrf_cookie)
+        self.assertNotIn("Expires", csrf_cookie)
+
+        second_page = self.get("/access/login")
+        second_match = re.search(r'name="csrf_token" value="([^"]+)"', second_page.text)
+        self.assertIsNotNone(second_match)
+        assert second_match is not None
+        self.assertEqual(second_match.group(1), first_match.group(1))
+
+        login = self.post(
+            "/access/login",
+            data={
+                "csrf_token": first_match.group(1),
+                "next": "/",
+                "token": "integration-full-token",
+            },
+        )
+        self.assertEqual(login.status_code, 303)
 
     def test_login_rejects_external_next_target(self) -> None:
         login_page = self.get("/access/login?next=https://example.com/steal")

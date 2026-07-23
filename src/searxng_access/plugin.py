@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from flask import Flask
     from searx.plugins import PluginCfg
 
+DEFAULT_SESSION_LIFETIME = 30 * 24 * 60 * 60
+DEFAULT_SESSION_IDLE = 7 * 24 * 60 * 60
+
 
 class SXNGPlugin(Plugin):
     """Enforce access independently from user-selectable search plugin hooks."""
@@ -38,8 +41,8 @@ class SXNGPlugin(Plugin):
             preference_section=None,
         )
         self.store: TokenStore | None = None
-        self.session_lifetime = 7 * 24 * 60 * 60
-        self.session_idle = 8 * 60 * 60
+        self.session_lifetime = DEFAULT_SESSION_LIFETIME
+        self.session_idle = DEFAULT_SESSION_IDLE
         self.secure_cookie = True
         self.session_cookie = "__Host-searxng_access_session"
         self.login_csrf_cookie = "__Host-searxng_access_login_csrf"
@@ -210,7 +213,7 @@ class SXNGPlugin(Plugin):
         ):
             return self._login_page(
                 next_target,
-                error="The login form expired. Please try again.",
+                error="This login page is no longer valid. Please enter your token again.",
                 status=400,
             )
 
@@ -236,6 +239,7 @@ class SXNGPlugin(Plugin):
         response.set_cookie(
             self.session_cookie,
             session.session,
+            max_age=self.session_lifetime,
             secure=self.secure_cookie,
             httponly=True,
             samesite="Lax",
@@ -308,7 +312,7 @@ class SXNGPlugin(Plugin):
         message: str | None = None,
         status: int = 200,
     ) -> Response:
-        csrf_token = secrets.token_urlsafe(32)
+        csrf_token = request.cookies.get(self.login_csrf_cookie) or secrets.token_urlsafe(32)
         notice = f'<p class="error">{escape(error)}</p>' if error else ""
         notice += f'<p class="message">{escape(message)}</p>' if message else ""
         body = f"""
@@ -327,7 +331,6 @@ class SXNGPlugin(Plugin):
         response.set_cookie(
             self.login_csrf_cookie,
             csrf_token,
-            max_age=600,
             secure=self.secure_cookie,
             httponly=True,
             samesite="Lax",

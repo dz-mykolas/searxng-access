@@ -19,8 +19,7 @@ docker compose up -d
 ```
 
 The image already contains SearXNG and enables the access plugin automatically on a
-fresh installation. The example uses `latest` by default. For predictable production
-deployments, create a local `.env` file with `SEARXNG_ACCESS_VERSION=0.1.2`.
+fresh installation. The example is pinned to version `0.1.3`.
 
 > [!IMPORTANT]
 > Browser login requires HTTPS in production. For temporary local HTTP testing, set
@@ -36,6 +35,7 @@ docker compose exec core searxng-access token create \
 > `--label` is only a human-readable name for identifying the token later.
 
 Open your SearXNG URL and paste the generated token. It is shown only once.
+The browser stays signed in for up to 30 days, or until it is inactive for 7 days.
 
 ### 3. Create an API token
 
@@ -78,7 +78,7 @@ curl -fsSL \
 
 printf '%s\n' \
   'SEARXNG_HOST=search.example.com' \
-  'SEARXNG_ACCESS_VERSION=0.1.2' > .env
+  'SEARXNG_ACCESS_VERSION=0.1.3' > .env
 
 mkdir core-config
 docker compose up -d
@@ -148,13 +148,14 @@ docker compose exec core searxng-access usage
 | --- | --- | --- |
 | `SEARXNG_ACCESS_DB` | `/var/cache/searxng/access.db` in the image | Database path |
 | `SEARXNG_ACCESS_SECURE_COOKIE` | `true` | HTTPS-only browser cookies |
-| `SEARXNG_ACCESS_SESSION_IDLE` | `28800` | Idle timeout in seconds |
-| `SEARXNG_ACCESS_SESSION_LIFETIME` | `604800` | Maximum session lifetime |
+| `SEARXNG_ACCESS_SESSION_IDLE` | `604800` | Idle timeout in seconds |
+| `SEARXNG_ACCESS_SESSION_LIFETIME` | `2592000` | Maximum session lifetime |
 
 ## 🛡️ Security at a glance
 
 - Raw tokens and session IDs are never stored—only SHA-256 hashes.
 - Browser cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` by default.
+- Browser sessions persist across restarts until their idle or absolute timeout.
 - Revoking a token also invalidates browser sessions created from it.
 - Usage counters never contain search queries.
 - SQLite contains tokens, sessions, quota windows, and aggregate usage.
@@ -166,13 +167,27 @@ docker compose exec core searxng-access usage
 Version tags publish tested `linux/amd64` and `linux/arm64` images to:
 
 ```text
-ghcr.io/dz-mykolas/searxng-access:0.1.2
-ghcr.io/dz-mykolas/searxng-access:latest
+ghcr.io/dz-mykolas/searxng-access:0.1.3
 ```
 
 The publish workflow runs unit and SearXNG integration tests, then publishes an SBOM
 and provenance attestation. The first GHCR package publication must be made public once
 by a maintainer so VPS users can pull it anonymously.
+
+## 🗺️ Roadmap
+
+### ✅ Done
+
+- [x] Bearer token and `X-API-Key` authentication
+- [x] Capabilities, quotas, expiration, and revocation
+- [x] Persistent browser sessions with idle and absolute timeouts
+- [x] SQLite-backed token, session, quota, and usage storage
+- [x] Baked multi-architecture container image
+- [x] Caddy deployment example with automatic HTTPS
+
+### 🔜 Planned
+
+- [ ] Automated pull requests for dependency, container image, and GitHub Actions updates
 
 ## 📄 License
 
